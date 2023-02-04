@@ -1,0 +1,119 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Mar 30 23:00:59 2021
+
+@author: Şura Kırcalı
+"""
+
+#Bu calismada zaman serisi ile gelecege yonelik tahmin yapilmistir.
+#Bu kapsamda Spyder IDE'si ve pandas, matplotlib.pyplot ve fbprophet kutuphaneleri kullanilmistir.
+#Adim 1: Paylasilan veriden istenilen sutunlar cagirilmistir.
+#Adim 2: Prophet icin tarih ve deger atamasi yapilmistir.
+#Adim 3: İnisiyatif belirlenerek 2020-01-01 sonrasinda baslanan asilama tarihi kullanilmistir.
+#Adim 4: Siralama, grafik, prophet ve fit metodu tanımlanmistir.
+#Adim 5: 12 aylik süre icin tahminler ve görsellestirme yapilmistir.
+
+#NOT: Ozen vd. (2021) tarafindan hazirlanan "COVID-19 Vakalarının Makine Öğrenmesi Algoritmaları ile Tahmini: 
+#    Amerika Birleşik Devletleri Örneği" isimli calisma sonucuna dayanarak Polinom Regresyon Modeli de uygulanmaya calisilmistir.
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import fbprophet
+
+data = pd.read_csv('share-people-vaccinated-covid.csv')
+
+#Kullanmak istedigim sutunlar
+df = data[['Day', 'people_vaccinated_per_hundred']]
+
+#Prophet icin tarih ve deger atama
+df = df.rename(columns={'Day':'ds', 'people_vaccinated_per_hundred':'y'})
+
+#Satirlar 2020 ve sonrasını icersin (inisiyatif)
+df=df[(df['ds']>='2020-01-01')&(df['ds']<='2021-03-17')]
+
+#siralama yontemimiz
+df = df.sort_values(by=['ds'], ascending=True)
+
+#Grafik basliklarini belirleme
+plt.plot(df['ds'], df['y'], 'r')
+plt.title('Estimate Vaccination Completion')
+plt.xlabel('Date')
+plt.ylabel('Percent (%)')
+plt.draw()
+
+#prophet modelinin hazirlanmasi ve fit metodunun uygulanmasi
+df_prophet = fbprophet.Prophet(changepoint_prior_scale=0.15)
+df_prophet.fit(df)
+
+#Tahminimizi 12 aylik sürec icin yapsin
+gun_sayisi=365
+df_forecast = df_prophet.make_future_dataframe(periods= gun_sayisi, freq='D')
+
+#Tahminlerin yapilmasi
+df_forecast = df_prophet.predict(df_forecast)
+
+#Sonuclarin gorsellestirilmesi
+df_prophet.plot(df_forecast, xlabel = 'Date', ylabel = 'Vaccination')
+plt.title(f'{gun_sayisi}Vaccination Completion')
+plt.title('Estimate Vaccination Completion')
+plt.ylabel('Percent (%)')
+
+plt.show()
+
+#Tahmin bilesenlerinin grafige aktarilmasi
+df_prophet.plot_components(df_forecast)
+plt.show()
+
+
+#%%
+
+#Polinom Regresyon Modeli
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+os.chdir('C:\\Users\\_hp\\.spyder-py3')
+dataset = pd.read_csv('share-people-vaccinated-covid.csv')
+
+#Kullanmak istedigim sutunlar
+df = dataset[['Day', 'people_vaccinated_per_hundred']]
+
+#Bagimli ve bagimsiz degisken olusturma
+X = dataset.iloc[:, 1:2].values
+y = dataset.iloc[:, 2].values
+
+#Veri setini ayirma
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+
+#Basit doğrusal regresyon kullanilarak egitilmesi
+from sklearn.linear_model import LinearRegression
+lin_reg = LinearRegression()
+lin_reg.fit(X, y)
+
+#Polinom regresyon icin on hazirlik
+from sklearn.preprocessing import PolynomialFeatures
+poly_reg = PolynomialFeatures(degree = 2)
+X_poly = poly_reg.fit_transform(X)
+
+#Polinom Doğrusal Regresyon ile modelin egitilmesi
+poly_reg.fit(X_poly, y)
+lin_reg_2 = LinearRegression()
+lin_reg_2.fit(X_poly, y)
+
+#Dogrusal Regresyon Modelinin grafiğinin cizilmesi
+plt.scatter(X, y, color = 'red')
+plt.plot(X, lin_reg.predict(X), color = 'blue')
+plt.title('Estimate Vaccination Completion')
+plt.xlabel('Day')
+plt.ylabel('Percent (%)')
+plt.show()
+
+#Polinom Regresyon Modelinin grafiginin cizilmesi
+plt.scatter(X, y, color = 'red')
+plt.plot(X, lin_reg_2.predict(poly_reg.fit_transform(X)), color = 'blue')
+plt.title('Estimate Vaccination Completion')
+plt.xlabel('Day')
+plt.ylabel('Percent (%)')
+plt.show()
